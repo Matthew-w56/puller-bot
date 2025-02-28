@@ -46,6 +46,7 @@ sudo echo "" > /home/ubuntu/puller-bot/credentials.txt
 # Set up other automatically generated files/directories
 echo "Making directories and other base files.."
 echo "1" > ./resources/status.txt
+echo "1.0" > ./resources/strength.txt
 mkdir ./puller-bot/logs
 mkdir ./puller-bot/screenshots
 

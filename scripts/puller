@@ -20,6 +20,8 @@ credsFile="/home/ubuntu/puller-bot/credentials.txt"
 #   stop
 #   status [service (s) / timer (t) (default)]
 #   uninstall
+#   strength  -view
+#       set [strength]
 #   creds
 #       list
 #       clear

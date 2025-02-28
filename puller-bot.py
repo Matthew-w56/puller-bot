@@ -34,6 +34,7 @@ from datetime import datetime
 import time
 import json
 import os
+import random.random as randomFloat
 
 
 
@@ -50,6 +51,7 @@ numberPullingWebsiteURL = "https://mynumbercollection.com/"
 # File Paths
 
 runStateFilePath = "/home/ubuntu/puller-bot/resources/status.txt"
+runStengthFilePath = "/home/ubuntu/puller-bot/resources/strength.txt"
 # <RUN_STATE> gets replaced with the auto-incrementing run state counter
 screenshotBasePath = "/home/ubuntu/puller-bot/screenshots/<RUN_STATE>-state/"
 myLogFilePath = "/home/ubuntu/puller-bot/logs/pullerBot-<RUN_STATE>.log"
@@ -88,9 +90,8 @@ doCannotGetNumbersNotReadyScreenshot = False
 # Get the run state ready
 runState = -1
 try:
-	with open(runStateFilePath, 'r') as f:
+	with open(runStateFilePath, 'r+') as f:
 		runState = int(f.read())
-	with open(runStateFilePath, 'w') as f:
 		f.write(str(runState+1))
 except FileNotFoundError as e:
 	print(f"Failed to get runState file!\n{e}")
@@ -119,6 +120,15 @@ logging.basicConfig(
 
 # Now that we can log, log the credentials filepath given
 logging.info(f"Given credential file: {credentialsFilePath}")
+
+# Pull the run strength from file
+runStrength = 1.0
+try:
+	with open(runStrengthFilePath, 'r') as f:
+		runStrength = float(f.read())
+except FileNotFoundError as e:
+	logging.error(f"Failed to get run strength!\n{e}")
+	exit(1)
 
 
 # ------------------------[ Execution Helper Methods ]------------------------
@@ -211,6 +221,15 @@ if __name__ == "__main__":
 			logging.warning(f"Failed to get credentials from ({credential})!")
 			continue
 		logging.info(f"Starting credential [{credParts[0]}]")
+
+		# Take some small change to not pull this time (per the run strength)
+		# run strength of 1 means 100% chance to run.  run strength of 0.5 means
+		# a 50% chance to run this credential
+		if randomFloat() > runStrength:
+			logging.info(f"Random chance triggered to skip this number pull for {credParts[0]}!")
+			continue
+		else:
+			logging.info("Random chance to skip this number pull not taken; Continuing..")
 
 		with sync_playwright() as p:
 			try:
