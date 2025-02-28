@@ -1,0 +1,264 @@
+#!/bin/bash
+
+# TODO: Finish functionality
+# TODO: Finish Help messages
+# TODO: Finish checking input and giving feedback for errors
+
+# We assume we have SUDO privileges due to the setup script
+# making sure we do.
+
+# Configurations
+
+credsFile="/home/ubuntu/puller-bot/credentials.txt"
+
+
+
+
+# puller
+#   help
+#   start
+#   stop
+#   status [service (s) / timer (t) (default)]
+#   uninstall
+#   creds
+#       list
+#       clear
+#           [y/n]
+#       count
+#       add [user] [pass]
+
+
+# General Help message
+function puller_help {
+    echo "Available 'puller' commands:"
+    echo "  puller start                            - Start the puller service"
+    echo "  puller stop                             - Stop the puller service"
+    echo "  puller status [service | s | timer | t] - Check the status of the puller-bot"
+    echo "  puller creds                            - Not a stand-alone command"
+    echo "    puller creds list                     - List all credentials stored"
+    echo "    puller creds clear                    - Clear all credentials"
+    echo "    puller creds count                    - Return number of credential sets"
+    echo "    puller creds add [user] [pass]        - Add a new set of credentials"
+    echo "  puller uninstall                        - Removes all installed artifacts of the puller bot"
+    echo "  puller help                             - See this message again"
+}
+
+# Help message given when the user does not give a valid
+# credentials command.  Once the specific message is given,
+# call this to supply suggestions of what to do instead.
+function creds_help {
+    echo "$1"
+    echo "Available 'creds' commands:"
+    echo "  puller creds list                - List all credentials"
+    echo "  puller creds clear               - Clear all credentials"
+    echo "  puller creds count               - Return number of credentials loaded"
+    echo "  puller creds add [user] [pass]   - Add a new credential set"
+}
+
+
+
+# Start the puller bot by running the script that does it.
+function start_command {
+    if [ ! -f "$credsFile" ]; then
+        echo "Cannot find credentials file at $credsFile!"
+        return 1
+    fi
+    foundCount=$(grep -o ',,,' "$credsFile" | wc -l)
+    if [ "$foundCount" -eq 0 ]; then
+        echo "Can't find any credentials in the storage!"
+        echo "To start the bot, first run"
+        echo "   puller creds add [username] [password]"
+        return 1
+    fi
+    sudo sh /home/ubuntu/puller-bot/scripts/botStart.sh
+}
+
+# Stop the puller bot by running the script that does it.
+function stop_command {
+    sudo sh /home/ubuntu/puller-bot/scripts/botStop.sh
+}
+
+# Show the status of the timer or service in the system.
+# If neither "timer" or "service" is specified (or "t"/"s"),
+# then the timer is shown (which is seen as more helpful).
+function status_command {
+    # TODO: Deal with command counts, error states, and help messages
+    if [ -z "$1" ] || [ "$1" = "timer" ] || [ "$1" = "t" ]; then
+        sudo systemctl status puller-bot.timer
+    elif [ "$1" = "service" ] || [ "$1" = "s" ]; then
+        sudo systemctl status puller-bot.service
+    fi
+}
+
+# Take the text from the credentials file, replace the ,,,
+# with '\n   ', and output the result
+function creds_list_command {
+    if [ ! -f "$credsFile" ]; then
+        echo "Cannot find credentials file at $credsFile!"
+        return 1
+    fi
+    sed "s/,,,/\n   /g" "$credsFile"
+}
+
+function creds_clear_command {
+    if [ ! -f "$credsFile" ]; then
+        echo "Cannot find credentials file at $credsFile!"
+        return 1
+    fi
+    read -r -p "This will delete all your stored credentials.\nAre you sure? (y/n): " userResponse
+    if [[ "$userResponse" =~ ^[Yy]$ ]]; then
+        echo "" > "$credsFile"
+        echo "Credentials file cleared."
+    elif [[ "$userResponse" =~ ^[Nn]$ ]]; then
+        return 0
+    else
+        echo "Invalid answer.  Stopping the operation.."
+        return 0
+    fi
+}
+
+function creds_count_command {
+    if [ ! -f "$credsFile" ]; then
+        echo "Cannot find credentials file at $credsFile!"
+        return 1
+    fi
+    foundCount=$(grep -o ',,,' "$credsFile" | wc -l)
+    echo "You currently have $foundCount credentials stored"
+}
+
+function creds_add_command {
+    if [ ! -f "$credsFile" ]; then
+        echo "" > "$credsFile"
+    fi
+    printf "\n%s,,,%s" "$1" "$2" >> "$credsFile"
+    echo "Added credential to the puller-bot's list"
+}
+
+function creds_command {
+    if [ $# -eq 0 ]; then
+        creds_help "You need more arguments for 'puller creds'!"
+        return 1
+    fi
+
+    case "$1" in
+        list)
+            if [ ! $# -eq 1 ]; then
+                creds_help "Too many arguments for 'puller creds list'!"
+                return 1
+            fi
+            creds_list_command
+            ;;
+        clear)
+            if [ ! $# -eq 1 ]; then
+                creds_help "Too many argument for 'puller creds clear'!"
+                return 1
+            fi
+            creds_clear_command
+            ;;
+        count)
+            if [ ! $# -eq 1 ]; then
+                creds_help "Too many argument for 'puller creds count'!"
+                return 1
+            fi
+            creds_count_command
+            ;;
+        add)
+            if [ $# -lt 3 ]; then
+                echo "Please provide a username and password for 'puller creds add'!"
+                return 1
+            fi
+            creds_add_command "$2" "$3"
+            ;;
+        *)
+            creds_help "Unknown command: puller creds $1"
+            ;;
+    esac
+}
+
+function uninstall_command {
+    echo ""
+    echo "WARNING:"
+    echo "  Continuing with this command will"
+    echo "  remove all artifacts of the puller"
+    echo "  bot in your system (short of deleting"
+    echo "  this repo from your machine).  To"
+    echo "  use the bot after this command, you"
+    echo "  will have to re-install through the"
+    echo "  manual setup script (the 'puller' CLI"
+    echo "  [THIS UTILITY] will also stop working)."
+    echo ""
+    read -r -p "Do you want to continue? (y/n): " userResponse
+
+    if [[ "$userResponse" =~ ^[Yy]$ ]]; then
+
+        sudo sh /home/ubuntu/puller-bot/scripts/uninstall.sh
+        echo ""
+        echo "Puller Bot has been uninstalled.  Thanks for"
+        echo "using it!"
+        echo ""
+    elif [[ "$userResponse" =~ ^[Nn]$ ]]; then
+        echo "Good choice!  Thanks!"
+        return 0
+    else
+        echo "Invalid answer.  Stopping the operation.."
+        return 0
+    fi
+
+}
+
+
+
+# MAIN ROUTINE
+
+if [ $# -eq 0 ]; then
+    puller_help
+    return 0
+fi
+
+case "$1" in
+    start)
+        if [ -n "$2" ]; then
+            echo "Too many arguments for 'puller start'!"
+            return 1
+        fi
+        start_command
+        ;;
+    stop)
+        if [ -n "$2" ]; then
+            echo "Too many arguments for 'puller stop'!"
+            return 1
+        fi
+        stop_command
+        ;;
+    status)
+        if [ $# -gt 2 ]; then
+            echo "Too many arguments for 'puller status'!"
+            echo "Please add no arguments, or [service | s | timer | t]"
+            echo "Example:  puller status s"
+            return 1
+        fi
+        status_command "${@:2}"
+        ;;
+    creds)
+        creds_command "${@:2}"
+        ;;
+    help)
+        if [ -n "$2" ]; then
+            echo "'puller help' does not take arguments! Ignoring them.."
+            return 1
+        fi
+        puller_help
+        return 0
+        ;;
+    uninstall)
+        if [ -n "$2" ]; then
+            echo "Too many arguments for 'puller uninstall'!"
+            return 1
+        fi
+        uninstall_command
+        ;;
+    *)
+        echo "Unknown command: puller $1!"
+        puller_help
+        ;;
+esac

@@ -1,0 +1,5 @@
+[Unit]
+Description="Puller Bot 2.0 at your service"
+
+[Service]
+ExecStart=/home/ubuntu/my-venv/bin/python3 /home/ubuntu/puller-bot/puller-bot.py

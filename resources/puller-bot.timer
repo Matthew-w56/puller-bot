@@ -1,0 +1,10 @@
+[Unit]
+Description="Run the puller bot service"
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=4h10s
+Unit=puller-bot.service
+
+[Install]
+WantedBy=multi-user.target
