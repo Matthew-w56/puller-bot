@@ -1,15 +1,31 @@
 #!/bin/bash
 
-# TODO: Finish functionality
-# TODO: Finish Help messages
-# TODO: Finish checking input and giving feedback for errors
+# Ideas for next:
+# - puller creds delete [username]
+# - puller reload      (undocumented)
+# - Better user/pass display from puller creds list
+# - Re-route the return calls' exit codes to the outter exit codes (ex: exit creds_list_command)
+# - Try again with the strength settings stuff
+# 
+# Bigger idea:
+# Have a ./resources/userHome.txt that just holds "/home/ubuntu".
+# Then, link it in to the rest of the system so that, if a user
+# is named "paul", then changing the userHome.txt file to read:
+# "/home/paul" will make the system still work for them.  Steps to
+# make this work, as I can think of right now:
+# - Change the USER_HOME variable in this file to just cat the userHome file
+# - Inject the USER_HOME into the resource files (timer|service) as they get copied over,
+#   - Use some placeholder for replacement such as <USER_HOME>
+# - Make sure to also cat the userHome file in the other script files, and refer to them there
+# - The functions and calls below (rest of this file) don't currently use USER_HOME all over. Make them.
 
 # We assume we have SUDO privileges due to the setup script
 # making sure we do.
 
 # Configurations
 
-credsFile="/home/ubuntu/puller-bot/credentials.txt"
+USER_HOME=/home/ubuntu
+credsFile=$USER_HOME + /puller-bot/credentials.txt
 
 
 
@@ -20,8 +36,6 @@ credsFile="/home/ubuntu/puller-bot/credentials.txt"
 #   stop
 #   status [service (s) / timer (t) (default)]
 #   uninstall
-#   strength  -view
-#       set [strength]
 #   creds
 #       list
 #       clear
@@ -92,6 +106,12 @@ function status_command {
     fi
 }
 
+# Helper method to remove all blank lines in the credentials file
+function clean_creds_file {
+    sed -i '/^$/d' "$credsFile"
+
+}
+
 # Take the text from the credentials file, replace the ,,,
 # with '\n   ', and output the result
 function creds_list_command {
@@ -100,6 +120,7 @@ function creds_list_command {
         return 1
     fi
     sed "s/,,,/\n   /g" "$credsFile"
+    echo ""
 }
 
 function creds_clear_command {
@@ -141,6 +162,7 @@ function creds_command {
         creds_help "You need more arguments for 'puller creds'!"
         return 1
     fi
+    clean_creds_file
 
     case "$1" in
         list)
@@ -180,14 +202,12 @@ function creds_command {
 function uninstall_command {
     echo ""
     echo "WARNING:"
-    echo "  Continuing with this command will"
-    echo "  remove all artifacts of the puller"
-    echo "  bot in your system (short of deleting"
-    echo "  this repo from your machine).  To"
-    echo "  use the bot after this command, you"
-    echo "  will have to re-install through the"
-    echo "  manual setup script (the 'puller' CLI"
-    echo "  [THIS UTILITY] will also stop working)."
+    echo "  Continuing with this command will remove all artifacts of the puller"
+    echo "  bot in your system (short of deleting this repo from your machine).  To"
+    echo "  use the bot after this command, you will have to re-install through the"
+    echo "  manual setup script"
+    echo ""
+    echo "The puller CLI [THIS UTILITY] will also stop working!"
     echo ""
     read -r -p "Do you want to continue? (y/n): " userResponse
 
@@ -210,25 +230,25 @@ function uninstall_command {
 
 
 
-# MAIN ROUTINE
+################### [ MAIN ROUTINE ] ###################
 
 if [ $# -eq 0 ]; then
     puller_help
-    return 0
+    exit 0
 fi
 
 case "$1" in
     start)
         if [ -n "$2" ]; then
             echo "Too many arguments for 'puller start'!"
-            return 1
+            exit 1
         fi
         start_command
         ;;
     stop)
         if [ -n "$2" ]; then
             echo "Too many arguments for 'puller stop'!"
-            return 1
+            exit 1
         fi
         stop_command
         ;;
@@ -237,7 +257,7 @@ case "$1" in
             echo "Too many arguments for 'puller status'!"
             echo "Please add no arguments, or [service | s | timer | t]"
             echo "Example:  puller status s"
-            return 1
+            exit 1
         fi
         status_command "${@:2}"
         ;;
@@ -247,15 +267,15 @@ case "$1" in
     help)
         if [ -n "$2" ]; then
             echo "'puller help' does not take arguments! Ignoring them.."
-            return 1
+            exit 1
         fi
         puller_help
-        return 0
+        exit 0
         ;;
     uninstall)
         if [ -n "$2" ]; then
             echo "Too many arguments for 'puller uninstall'!"
-            return 1
+            exit 1
         fi
         uninstall_command
         ;;

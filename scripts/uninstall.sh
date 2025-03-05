@@ -12,6 +12,7 @@ fi
 #   - Stop the service (if applicable)
 #   - Delete the service/timer files from /etc/systemd/system/
 #   - Delete the puller CLI from /usr/bin/
+#	- Get rid of the virtual environment for Python
 
 # Artifact left: the sudoers entry for the puller CLI
 
@@ -27,3 +28,6 @@ rm -f /etc/systemd/system/puller-bot*
 
 # Delete the puller CLI from /usr/bin/
 rm -f /usr/bin/puller
+
+# Remove the virtual python environment
+rm -rf /home/ubuntu/my-venv/
